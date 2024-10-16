@@ -1,28 +1,33 @@
 import streamlit as st
-st.title("내가 만든 앱")
-markdown_text = """
-# This is a Header
-## This is a Subheader
-You can write normal text here.
-* This is a bullet point
-* Another bullet point
-1. Numbered list item 1
-2. Numbered list item 2
-**Bold text** and *italic text*
-[This is a link](https://www.streamlit.io)
-Here's a code block:
-```python
-def hello_world():
-print("Hello, World!")
-```
-And here's a table:
-| Column 1 | Column 2 |
-|----------|----------|
-| Row 1 | Value 1 |
-| Row 2 | Value 2 |
-> This is a blockquote
----
-![Cute Cat](https://upload.wikimedia.org/wikipedia/commons/4/4d/Cat_November_2010-1a.jpg)
----
-"""
-st.markdown(markdown_text)
+import pandas as pd
+import os
+
+# 필요한 패키지 설치
+os.system('pip install matplotlib')
+
+import matplotlib
+matplotlib.use('Agg')  # To use a non-GUI backend
+import matplotlib.pyplot as plt
+
+# 파일 업로드
+data_file = 'movies_2024.csv'
+df = pd.read_csv(data_file)
+
+# Streamlit 앱 설정
+st.title('Budget vs Revenue Analysis')
+
+# 데이터 불러오기
+st.write("## Uploaded Dataset")
+st.dataframe(df)
+
+# budget과 revenue의 관계를 시각화
+if 'budget' in df.columns and 'revenue' in df.columns:
+    st.write("## Budget vs Revenue Scatter Plot")
+    fig, ax = plt.subplots()
+    ax.scatter(df['budget'], df['revenue'], alpha=0.5)
+    ax.set_xlabel('Budget')
+    ax.set_ylabel('Revenue')
+    ax.set_title('Budget vs Revenue')
+    st.pyplot(fig)
+else:
+    st.error("The dataset does not contain 'budget' or 'revenue' columns.")
