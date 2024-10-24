@@ -98,7 +98,7 @@ def create_vector_store(_docs):
         show_progress=True
     )
     if os.path.exists("faiss_index.faiss"):
-        vectorstore = FAISS.load_local("faiss_index.faiss", hf_embeddings)
+        vectorstore = FAISS.load_local("faiss_index.faiss", hf_embeddings, allow_dangerous_deserialization=True)
     else:
         vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
         vectorstore.save_local("faiss_index.faiss")
