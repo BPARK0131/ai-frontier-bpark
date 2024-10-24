@@ -97,7 +97,11 @@ def create_vector_store(_docs):
         encode_kwargs={"normalize_embeddings": True},
         show_progress=True
     )
-    vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
+    if os.path.exists("faiss_index.faiss"):
+        vectorstore = FAISS.load_local("faiss_index.faiss", hf_embeddings)
+    else:
+        vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
+        vectorstore.save_local("faiss_index.faiss")
     return vectorstore, hf_embeddings
 
 # 텍스트 분할기 생성 및 문서 분할
@@ -217,11 +221,11 @@ user_question = st.text_input("질문을 입력하세요:")
 if st.button("질문하기"):
     if user_question:
         return_answer = get_answer(user_question)
-        st.write("""
+        st.write(f"""
 #### 📋 질문:
 {user_question}
 """)
-        st.write("""
+        st.write(f"""
 📜 **답변**:
 {return_answer}
 """)
