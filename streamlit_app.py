@@ -212,21 +212,24 @@ def get_answer(user_input):
             "result": sql_result
         }
         final_answer = answer.invoke(final_answer_input)
-        return f"질문: {user_input}\nSQL 조회를 통한 답변입니다: {final_answer.strip()}"
+        return f"(SQL 조회를 통한 답변입니다.)\n\n{final_answer.strip()}"
     else:
-        return f"질문: {user_input}\nRAG 조회를 통한 답변입니다: {result.strip()}"
+        return f"(RAG 조회를 통한 답변입니다.)\n\n{result.strip()}"
+
+
 
 # Streamlit 사용자 인터페이스
+import time
 user_question = st.text_input("질문을 입력하세요:")
+
 if st.button("질문하기"):
     if user_question:
-        return_answer = get_answer(user_question)
-        st.write(f"""
-#### 📋 질문:
-{user_question}
-""")
-        st.write(f"""
-📜 **답변**:
-{return_answer}
-""")
+        with st.spinner('답변을 생성 중입니다...'):
+            time.sleep(2)  # 예시로 지연시간 추가
+            return_answer = get_answer(user_question)
+        
+        st.markdown("#### 📋 질문:")
+        st.write(user_question)
+
+        st.markdown("#### 📜 답변:")
         st.write(return_answer)
