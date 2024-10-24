@@ -21,7 +21,7 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Streamlit 애플리케이션 제목 설정
-st.title("RAG 기반 질의응답 시스템")
+st.title("💡 고장 로그 분석 및 답변 도우미 ")
 
 # API_KEY.txt 파일을 환경 변수로 불러오는 함수 정의
 def load_config(file_path):
@@ -97,7 +97,7 @@ def create_vector_store(_docs):
         encode_kwargs={"normalize_embeddings": True},
         show_progress=True
     )
-    vectorstore = FAISS.from_documents(documents=docs, embedding=hf_embeddings)
+    vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
     return vectorstore, hf_embeddings
 
 # 텍스트 분할기 생성 및 문서 분할
@@ -217,5 +217,12 @@ user_question = st.text_input("질문을 입력하세요:")
 if st.button("질문하기"):
     if user_question:
         return_answer = get_answer(user_question)
-        st.write("\n===========\n최종답변\n===========")
+        st.write("""
+#### 📋 질문:
+{user_question}
+""")
+        st.write("""
+📜 **답변**:
+{return_answer}
+""")
         st.write(return_answer)
