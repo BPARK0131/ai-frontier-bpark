@@ -1,7 +1,9 @@
 import os
+import re
 import pandas as pd
 import streamlit as st
-from sqlalchemy import create_engine, String, Integer, DateTime
+from sqlalchemy import create_engine
+from sqlalchemy.types import String, Integer, DateTime
 from transformers import AutoTokenizer
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -87,7 +89,7 @@ db = create_sql_database(df)
 
 # 임베딩 및 벡터 스토어 생성 (캐시 적용)
 @st.cache_resource
-def create_vector_store(docs):
+def create_vector_store(_docs):
     model_name = "intfloat/multilingual-e5-large-instruct"
     hf_embeddings = HuggingFaceEmbeddings(
         model_name=model_name,
@@ -106,7 +108,7 @@ text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
 )
 docs = [Document(page_content=row['syslog'], metadata={"event_time": row['event_time']}) for _, row in df.iterrows()]
 splitted_docs = text_splitter.split_documents(docs)
-vectorstore, hf_embeddings = create_vector_store(splitted_docs)
+vectorstore, hf_embeddings = create_vector_store(_docs=splitted_docs)
 
 # 검색기 설정 (BM25 및 FAISS)
 bm25_retriever = BM25Retriever.from_documents(splitted_docs)
@@ -180,6 +182,9 @@ rag_chain = (
     | rag_llm
     | StrOutputParser()
 )
+
+# 쿼리 작성 단계 (RunnablePassthrough)
+query_runnable = RunnablePassthrough.assign(query=write_query)
 
 # 최종 체인 라우팅
 multi_prompt_chain = RunnableLambda(

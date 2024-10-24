@@ -20,3 +20,4 @@ transformers
 sentence-transformers
 rank_bm25
 kiwipiepy
+SQLAlchemy
