@@ -1,0 +1,2 @@
+OPENAI_API_KEY=sk-gapk-uyNUzpALOzgEuU5mRicDHU3Cf-oqiPMy
+ANOTHER_API_KEY=some_other_value
