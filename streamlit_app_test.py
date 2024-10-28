@@ -95,7 +95,7 @@ db = create_sql_database(df)
 # 임베딩 및 벡터 스토어 생성 (캐시 적용)
 @st.cache_resource
 def create_vector_store(_docs):
-    model_name = "intfloat/multilingual-e5-large-instruct"
+    model_name = "intfloat/multilingual-e5-small" 
     hf_embeddings = HuggingFaceEmbeddings(
         model_name=model_name,
         model_kwargs={"device": "cpu"},
@@ -111,7 +111,7 @@ def create_vector_store(_docs):
 
 # 텍스트 분할기 생성 및 문서 분할
 text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large-instruct"),
+    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-small" ),
     chunk_size=400,
     chunk_overlap=30
 )
