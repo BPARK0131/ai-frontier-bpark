@@ -131,17 +131,6 @@ ensemble_retriever = EnsembleRetriever(
     search_type="similarity"
 )
 
-# StreamlitCallbackHandler 정의
-class StreamlitCallbackHandler(BaseCallbackHandler):
-    def __init__(self, placeholder):
-        self.placeholder = placeholder
-        self.text = ""
-
-    def on_llm_new_token(self, token: str, **kwargs):
-        # 새 토큰이 생성될 때마다 텍스트를 업데이트합니다.
-        self.text += token
-        self.placeholder.markdown(self.text)
-
 
 # LLM 설정 및 SQL 쿼리 관련 체인 정의
 sql_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",

@@ -95,8 +95,8 @@ db = create_sql_database(df)
 # 임베딩 및 벡터 스토어 생성 (캐시 적용)
 @st.cache_resource
 def create_vector_store(_docs):
-    model_name = "intfloat/multilingual-e5-large-instruct"
-    hf_embeddings = HuggingFaceEmbeddings(
+    model_name = "intfloat/multilingual-e5-small" #임베딩 모델 변경
+    hf_embeddings = HuggingFaceEmbeddings(     
         model_name=model_name,
         model_kwargs={"device": "cpu"},
         encode_kwargs={"normalize_embeddings": True},
@@ -107,17 +107,17 @@ def create_vector_store(_docs):
     else:
         vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
         vectorstore.save_local("faiss_index.faiss")
-    return vectorstore, hf_embeddings
+    return vectorstore  #반환값 수정
 
 # 텍스트 분할기 생성 및 문서 분할
 text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large-instruct"),
-    chunk_size=400,
+    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-small"), #임베딩 모델 변경
+    chunk_size=200, #청크 크기 줄임
     chunk_overlap=30
 )
 docs = [Document(page_content=row['syslog'], metadata={"event_time": row['event_time']}) for _, row in df.iterrows()]
 splitted_docs = text_splitter.split_documents(docs)
-vectorstore, hf_embeddings = create_vector_store(_docs=splitted_docs)
+vectorstore= create_vector_store(_docs=splitted_docs)
 
 # 검색기 설정 (BM25 및 FAISS)
 bm25_retriever = BM25Retriever.from_documents(splitted_docs)
