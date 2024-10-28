@@ -20,6 +20,9 @@ from langchain_openai import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+
+#API_KEY = st.secrets["OPENAI_API_KEY"]
+
 # Streamlit 애플리케이션 제목 설정
 st.title("💡 고장 로그 분석 및 답변 도우미 ")
 
@@ -31,8 +34,9 @@ def load_config(file_path):
             os.environ[key] = value
 
 # 환경 변수 설정
-load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
-os.environ["TOKENIZERS_PARALLELISM"] = "true"
+# load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 gip_base_url = "https://api.platform.a15t.com/v1"
 
