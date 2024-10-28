@@ -20,7 +20,8 @@ from langchain.retrievers import EnsembleRetriever
 from langchain_openai import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
+import nest_asyncio
+import asyncio
 
 #API_KEY = st.secrets["OPENAI_API_KEY"]
 
@@ -228,16 +229,22 @@ def get_answer(user_input):
 async def get_answer(user_input):
     return await multi_prompt_chain({"input": user_input})
 
+# nest_asyncio 적용
+nest_asyncio.apply()
+
 # Streamlit 사용자 인터페이스
 user_question = st.text_input("질문을 입력하세요:")
 
 if st.button("질문하기"):
     if user_question:
         with st.spinner('답변을 생성 중입니다...'):
-            return_answer = asyncio.run(get_answer(user_question))
+            # 비동기 함수에서 asyncio.run 대신 asyncio.create_task를 사용하여 속도 향상
+            loop = asyncio.get_event_loop()
+            return_answer = loop.run_until_complete(get_answer(user_question))
         
         st.markdown("#### 📜 질문:")
         st.write(user_question)
 
         st.markdown("#### 📜 답변:")
         st.write(return_answer)
+
