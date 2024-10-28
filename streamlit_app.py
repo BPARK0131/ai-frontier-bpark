@@ -13,18 +13,18 @@ from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
 from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
 from langchain.schema import Document
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_openai import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.callbacks.base import BaseCallbackHandler
 
-
-#API_KEY = st.secrets["OPENAI_API_KEY"]
+API_KEY = st.secrets["OPENAI_API_KEY"]
 
 # Streamlit 애플리케이션 제목 설정
-st.title("💡 고장 로그 분석 및 답변 도우미 ")
+st.title("💡 고장 로그 분석 및 답변 도우미v0.1 ")
 
 # API_KEY.txt 파일을 환경 변수로 불러오는 함수 정의
 def load_config(file_path):
@@ -34,8 +34,8 @@ def load_config(file_path):
             os.environ[key] = value
 
 # 환경 변수 설정
-# load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"] # Stremlit Secret 변수 활용 
+#load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 gip_base_url = "https://api.platform.a15t.com/v1"
@@ -62,7 +62,8 @@ def load_and_preprocess_data(file_path):
     df['after_action'] = df['after_action'].apply(lambda x: x[:500] if len(x) > 500 else x)
     return df
 
-file_path = "dummy_data_241018.csv" #상대경로로 변경
+file_path = "dummy_data_241018.csv" 
+
 df = load_and_preprocess_data(file_path)
 
 # SQLite 데이터베이스 생성 및 설정 (캐시 적용)
@@ -130,6 +131,18 @@ ensemble_retriever = EnsembleRetriever(
     search_type="similarity"
 )
 
+# StreamlitCallbackHandler 정의
+class StreamlitCallbackHandler(BaseCallbackHandler):
+    def __init__(self, placeholder):
+        self.placeholder = placeholder
+        self.text = ""
+
+    def on_llm_new_token(self, token: str, **kwargs):
+        # 새 토큰이 생성될 때마다 텍스트를 업데이트합니다.
+        self.text += token
+        self.placeholder.markdown(self.text)
+
+
 # LLM 설정 및 SQL 쿼리 관련 체인 정의
 sql_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
                     streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
@@ -163,7 +176,8 @@ router_prompt = PromptTemplate(
     template="다음 질문이 SQL 데이터베이스에서 조회할 수 있는지 여부를 판단하세요.\n질문: {input}\nSQL 조회가 가능하다면 'SQL'이라고 답하고, 그렇지 않다면 'RAG'라고 답하세요."
 )
 router_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
+                    streaming=False, 
+                    #callbacks=[StreamingStdOutCallbackHandler()], #Callback 옵션 필요 없음
                     temperature=0.5, base_url=gip_base_url)
 router_runnable = router_prompt | router_llm | StrOutputParser()
 
@@ -221,7 +235,6 @@ def get_answer(user_input):
         return f"(RAG 조회를 통한 답변입니다.)\n\n{result.strip()}"
 
 
-
 # Streamlit 사용자 인터페이스
 import time
 user_question = st.text_input("질문을 입력하세요:")
@@ -230,10 +243,19 @@ if st.button("질문하기"):
     if user_question:
         with st.spinner('답변을 생성 중입니다...'):
             time.sleep(2)  # 예시로 지연시간 추가
-            return_answer = get_answer(user_question)
+            return_answer = get_answer(user_question)  # 여기에서 실제 답변 생성
         
         st.markdown("#### 📋 질문:")
         st.write(user_question)
 
         st.markdown("#### 📜 답변:")
-        st.write(return_answer)
+
+        # 답변을 타이핑하듯 한글자씩 출력하기
+        response_placeholder = st.empty()  # 빈 공간을 먼저 만들어둠
+        typing_text = ""
+        
+        # 한글자씩 답변을 업데이트
+        for char in return_answer:
+            typing_text += char
+            response_placeholder.markdown(typing_text)  # 답변을 점진적으로 업데이트
+            time.sleep(0.05)  # 타이핑 효과를 위해 지연시간 추가

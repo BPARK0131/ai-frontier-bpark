@@ -26,7 +26,7 @@ import asyncio
 #API_KEY = st.secrets["OPENAI_API_KEY"]
 
 # Streamlit 애플리케이션 제목 설정
-st.title("💡 고장 로그 분석 및 답변 도우미 ")
+st.title("💡 고장 로그 분석 및 답변 도우미v ")
 
 # API_KEY.txt 파일을 환경 변수로 불러오는 함수 정의
 def load_config(file_path):
