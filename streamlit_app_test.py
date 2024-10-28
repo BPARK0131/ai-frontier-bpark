@@ -34,8 +34,8 @@ def load_config(file_path):
             os.environ[key] = value
 
 # 환경 변수 설정
-# load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"] # Stremlit Secret 변수 활용 
+load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
+#os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 gip_base_url = "https://api.platform.a15t.com/v1"
@@ -62,7 +62,7 @@ def load_and_preprocess_data(file_path):
     df['after_action'] = df['after_action'].apply(lambda x: x[:500] if len(x) > 500 else x)
     return df
 
-file_path = "dummy_data_241018.csv" #상대경로로 변경
+file_path = "/workspaces/ai-frontier-bpark/dummy_data_241018.csv"
 
 df = load_and_preprocess_data(file_path)
 
