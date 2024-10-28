@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
@@ -34,8 +35,8 @@ def load_config(file_path):
             os.environ[key] = value
 
 # 환경 변수 설정
-# load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
-os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"] # Stremlit Secret 변수 활용 
+load_config('/workspaces/ai-frontier-bpark/API_KEY.txt')
+#os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 gip_base_url = "https://api.platform.a15t.com/v1"
@@ -62,7 +63,7 @@ def load_and_preprocess_data(file_path):
     df['after_action'] = df['after_action'].apply(lambda x: x[:500] if len(x) > 500 else x)
     return df
 
-file_path = "dummy_data_241018.csv" #상대경로로 변경
+file_path = "/workspaces/ai-frontier-bpark/dummy_data_241018.csv" #Test용 경로
 df = load_and_preprocess_data(file_path)
 
 # SQLite 데이터베이스 생성 및 설정 (캐시 적용)
@@ -101,6 +102,7 @@ def create_vector_store(_docs):
         encode_kwargs={"normalize_embeddings": True},
         show_progress=True
     )
+    # 벡터 스토어 로딩 최적화
     if os.path.exists("faiss_index.faiss"):
         vectorstore = FAISS.load_local("faiss_index.faiss", hf_embeddings, allow_dangerous_deserialization=True)
     else:
@@ -120,8 +122,8 @@ vectorstore, hf_embeddings = create_vector_store(_docs=splitted_docs)
 
 # 검색기 설정 (BM25 및 FAISS)
 bm25_retriever = BM25Retriever.from_documents(splitted_docs)
-bm25_retriever.k = 5
-faiss_retriever = vectorstore.as_retriever(search_type='similarity', search_kwargs={'k': 5})
+bm25_retriever.k = 3
+faiss_retriever = vectorstore.as_retriever(search_type='similarity', search_kwargs={'k': 3})
 
 # 앙상블 검색기 생성
 ensemble_retriever = EnsembleRetriever(
@@ -222,17 +224,19 @@ def get_answer(user_input):
 
 
 
+# 최종 답변을 위한 비동기 함수 정의
+async def get_answer(user_input):
+    return await multi_prompt_chain({"input": user_input})
+
 # Streamlit 사용자 인터페이스
-import time
 user_question = st.text_input("질문을 입력하세요:")
 
 if st.button("질문하기"):
     if user_question:
         with st.spinner('답변을 생성 중입니다...'):
-            time.sleep(2)  # 예시로 지연시간 추가
-            return_answer = get_answer(user_question)
+            return_answer = asyncio.run(get_answer(user_question))
         
-        st.markdown("#### 📋 질문:")
+        st.markdown("#### 📜 질문:")
         st.write(user_question)
 
         st.markdown("#### 📜 답변:")
