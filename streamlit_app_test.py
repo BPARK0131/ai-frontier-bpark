@@ -134,7 +134,7 @@ ensemble_retriever = EnsembleRetriever(
 
 # LLM 설정 및 SQL 쿼리 관련 체인 정의
 sql_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
+                    streaming=False, callbacks=[StreamingStdOutCallbackHandler()],
                     temperature=0.2, base_url=gip_base_url)
 
 # SQL 쿼리 생성 및 실행 툴 설정
@@ -185,7 +185,7 @@ Answer in Korean.
 #Answer:"""
 )
 rag_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
+                    streaming=False, callbacks=[StreamingStdOutCallbackHandler()],
                     temperature=0, base_url=gip_base_url)
 rag_chain = (
     {"context": ensemble_retriever, "question": RunnablePassthrough()}
