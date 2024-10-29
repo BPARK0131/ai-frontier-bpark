@@ -226,25 +226,30 @@ def get_answer(user_input):
 
 # Streamlit 사용자 인터페이스
 import time
+
+
+# 질문 입력 필드
 user_question = st.text_input("질문을 입력하세요:")
 
 if st.button("질문하기"):
     if user_question:
         with st.spinner('답변을 생성 중입니다...'):
             time.sleep(2)  # 예시로 지연시간 추가
-            return_answer = get_answer(user_question)  # 여기에서 실제 답변 생성
+            return_answer = get_answer(user_question)  # 실제 답변 생성
+            
+        # 기존 질문과 답변 영역을 덮어쓰는 방식
+        question_placeholder = st.empty()
+        answer_placeholder = st.empty()
         
-        st.markdown("#### 📋 질문:")
-        st.write(user_question)
+        # 질문 출력
+        question_placeholder.markdown("#### 📋 질문:")
+        question_placeholder.write(user_question)
 
-        st.markdown("#### 📜 답변:")
-
-        # 답변을 타이핑하듯 한글자씩 출력하기
-        response_placeholder = st.empty()  # 빈 공간을 먼저 만들어둠
+        # 답변 출력 (타이핑 효과)
+        answer_placeholder.markdown("#### 📜 답변:")
         typing_text = ""
         
-        # 한글자씩 답변을 업데이트
         for char in return_answer:
             typing_text += char
-            response_placeholder.markdown(typing_text)  # 답변을 점진적으로 업데이트
+            answer_placeholder.markdown(typing_text)  # 답변을 점진적으로 업데이트
             time.sleep(0.05)  # 타이핑 효과를 위해 지연시간 추가
