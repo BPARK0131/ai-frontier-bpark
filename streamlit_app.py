@@ -21,6 +21,11 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.callbacks.base import BaseCallbackHandler
 
+# ==============================
+# Streamlit 애플리케이션 설정
+# ==============================
+# Streamlit 애플리케이션 제목 설정
+
 API_KEY = st.secrets["OPENAI_API_KEY"]
 
 # Streamlit 애플리케이션 제목 설정
@@ -40,7 +45,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 gip_base_url = "https://api.platform.a15t.com/v1"
 
+# ==============================
 # CSV 데이터 전처리 및 로드 (캐시 적용)
+# ==============================
 @st.cache_data
 def load_and_preprocess_data(file_path):
     df = pd.read_csv(file_path, delimiter=",", quotechar='"')
@@ -62,11 +69,13 @@ def load_and_preprocess_data(file_path):
     df['after_action'] = df['after_action'].apply(lambda x: x[:500] if len(x) > 500 else x)
     return df
 
-file_path = "dummy_data_241018.csv" 
+file_path = "/workspaces/ai-frontier-bpark/dummy_data_241018.csv"
 
 df = load_and_preprocess_data(file_path)
 
+# ==============================
 # SQLite 데이터베이스 생성 및 설정 (캐시 적용)
+# ==============================
 @st.cache_resource
 def create_sql_database(df):
     engine = create_engine("sqlite:///fault_data.db")
@@ -92,11 +101,13 @@ def create_sql_database(df):
 
 db = create_sql_database(df)
 
+# ==============================
 # 임베딩 및 벡터 스토어 생성 (캐시 적용)
+# ==============================
 @st.cache_resource
 def create_vector_store(_docs):
-    model_name = "intfloat/multilingual-e5-small" #임베딩 모델 변경
-    hf_embeddings = HuggingFaceEmbeddings(     
+    model_name = "intfloat/multilingual-e5-small" 
+    hf_embeddings = HuggingFaceEmbeddings(
         model_name=model_name,
         model_kwargs={"device": "cpu"},
         encode_kwargs={"normalize_embeddings": True},
@@ -107,18 +118,21 @@ def create_vector_store(_docs):
     else:
         vectorstore = FAISS.from_documents(documents=_docs, embedding=hf_embeddings)
         vectorstore.save_local("faiss_index.faiss")
-    return vectorstore  #반환값 수정
+    return vectorstore
 
 # 텍스트 분할기 생성 및 문서 분할
 text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-small"), #임베딩 모델 변경
-    chunk_size=200, #청크 크기 줄임
+    tokenizer=AutoTokenizer.from_pretrained("intfloat/multilingual-e5-small" ),
+    chunk_size=400,
     chunk_overlap=30
 )
 docs = [Document(page_content=row['syslog'], metadata={"event_time": row['event_time']}) for _, row in df.iterrows()]
 splitted_docs = text_splitter.split_documents(docs)
-vectorstore= create_vector_store(_docs=splitted_docs)
+vectorstore = create_vector_store(_docs=splitted_docs)
 
+# ==============================
+# 검색기 설정 및 앙상블 검색기 생성
+# ==============================
 # 검색기 설정 (BM25 및 FAISS)
 bm25_retriever = BM25Retriever.from_documents(splitted_docs)
 bm25_retriever.k = 5
@@ -131,28 +145,21 @@ ensemble_retriever = EnsembleRetriever(
     search_type="similarity"
 )
 
-# StreamlitCallbackHandler 정의
-class StreamlitCallbackHandler(BaseCallbackHandler):
-    def __init__(self, placeholder):
-        self.placeholder = placeholder
-        self.text = ""
 
-    def on_llm_new_token(self, token: str, **kwargs):
-        # 새 토큰이 생성될 때마다 텍스트를 업데이트합니다.
-        self.text += token
-        self.placeholder.markdown(self.text)
-
-
+# ==============================
 # LLM 설정 및 SQL 쿼리 관련 체인 정의
+# ==============================
 sql_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
+                    streaming=False, callbacks=[StreamingStdOutCallbackHandler()],
                     temperature=0.2, base_url=gip_base_url)
 
 # SQL 쿼리 생성 및 실행 툴 설정
 execute_query = QuerySQLDataBaseTool(db=db)
 write_query = create_sql_query_chain(sql_llm, db)
 
+# ==============================
 # 질문에 따른 쿼리 생성 템플릿 설정
+# ==============================
 answer_prompt = PromptTemplate.from_template(
     """Given the following user question, corresponding SQL query, and SQL result, answer the user question.
 If you don't know the answer, just say that you don't know.
@@ -165,23 +172,18 @@ Answer: """
 )
 answer = answer_prompt | sql_llm | StrOutputParser()
 
+# 쿼리 작성 단계 (RunnablePassthrough)
+query_runnable = RunnablePassthrough.assign(query=write_query)
+
 # SQL 쿼리 정제 함수 정의
 def clean_and_validate_query(query):
     clean_query = re.sub(r'```sql|```|SQLQuery:', '', query).strip()
     return clean_query.replace("\n", " ").strip()
 
-# 라우팅을 위한 Runnable 설정
-router_prompt = PromptTemplate(
-    input_variables=["input"],
-    template="다음 질문이 SQL 데이터베이스에서 조회할 수 있는지 여부를 판단하세요.\n질문: {input}\nSQL 조회가 가능하다면 'SQL'이라고 답하고, 그렇지 않다면 'RAG'라고 답하세요."
-)
-router_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=False, 
-                    #callbacks=[StreamingStdOutCallbackHandler()], #Callback 옵션 필요 없음
-                    temperature=0.5, base_url=gip_base_url)
-router_runnable = router_prompt | router_llm | StrOutputParser()
 
+# ==============================
 # RAG 프롬프트 생성 및 체인 정의
+# ==============================
 rag_prompt = PromptTemplate.from_template(
     """You are an assistant for question-answering tasks.
 Use the following pieces of retrieved context to answer the question.
@@ -196,7 +198,7 @@ Answer in Korean.
 #Answer:"""
 )
 rag_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
-                    streaming=True, callbacks=[StreamingStdOutCallbackHandler()],
+                    streaming=False, callbacks=[StreamingStdOutCallbackHandler()],
                     temperature=0, base_url=gip_base_url)
 rag_chain = (
     {"context": ensemble_retriever, "question": RunnablePassthrough()}
@@ -205,10 +207,24 @@ rag_chain = (
     | StrOutputParser()
 )
 
-# 쿼리 작성 단계 (RunnablePassthrough)
-query_runnable = RunnablePassthrough.assign(query=write_query)
 
+# ==============================
+# 라우팅을 위한 Runnable 설정
+# ==============================
+router_prompt = PromptTemplate(
+    input_variables=["input"],
+    template="다음 질문이 SQL 데이터베이스에서 조회할 수 있는지 여부를 판단하세요.\n질문: {input}\nSQL 조회가 가능하다면 'SQL'이라고 답하고, 그렇지 않다면 'RAG'라고 답하세요."
+)
+router_llm = ChatOpenAI(model_name="azure/openai/gpt-4o-mini-2024-07-18",
+                    streaming=False, 
+                    #callbacks=[StreamingStdOutCallbackHandler()], #Callback 옵션 필요 없음
+                    temperature=0.5, base_url=gip_base_url)
+router_runnable = router_prompt | router_llm | StrOutputParser()
+
+
+# ==============================
 # 최종 체인 라우팅
+# ==============================
 multi_prompt_chain = RunnableLambda(
     lambda inputs: query_runnable.invoke({"question": inputs["input"]})
     if router_runnable.invoke(inputs) == "SQL"
@@ -235,11 +251,19 @@ def get_answer(user_input):
         return f"(RAG 조회를 통한 답변입니다.)\n\n{result.strip()}"
 
 
+# ==============================
 # Streamlit 사용자 인터페이스
-import time
+# ==============================
+# 질문 입력 필드
 user_question = st.text_input("질문을 입력하세요:")
 
+
+# 질문 버튼
 if st.button("질문하기"):
+    # 기존 질문과 답변의 모든 컨테이너를 비우기 위해 새로운 화면 구성
+    st.session_state.clear()  # 세션 상태를 초기화하여 모든 이전 내용을 지움
+
+    # 질문이 있을 때만 답변 생성
     if user_question:
         with st.spinner('답변을 생성 중입니다...'):
             time.sleep(2)  # 예시로 지연시간 추가
