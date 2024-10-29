@@ -70,7 +70,7 @@ def load_and_preprocess_data(file_path):
     df['after_action'] = df['after_action'].apply(lambda x: x[:500] if len(x) > 500 else x)
     return df
 
-file_path = "/workspaces/ai-frontier-bpark/dummy_data_241018.csv"
+file_path = "dummy_data_241018.csv"
 
 df = load_and_preprocess_data(file_path)
 
